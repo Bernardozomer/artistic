@@ -129,8 +129,6 @@ int main(int argc, char** argv)
     glutMainLoop();
 }
 
-// TODO: Recursive division into four sectors is yet to be implemented.
-//	As of now, this procedure doesn't perform anything useful.
 void stylize(
 	size_t start_x, size_t start_y, size_t width, size_t height,
 	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
@@ -176,14 +174,12 @@ void stylize(
 	// }
 }
 
-// TODO: Treat the edge pixels. As of now, they are simply ignored.
 void detect_edges(
 	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
 	unsigned char threshold
 ) {
 	for (size_t row = 1; row < height-1; row++) {
 		for (size_t col = 1; col < width-1; col++) {
-			// TODO: This can be probably be made cleaner with a for loop.
 			Rgb neighbors[] = {
 				in[row-1][col-1],
 				in[row-1][col],
