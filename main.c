@@ -134,6 +134,48 @@ void stylize(
 	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
 ) {
 	int found_edge = 0;
+// size_t start_xHalfway = width/2;
+	// size_t start_yHalfway = height/2;
+
+	// Check if there is any edge in this sector of the image.
+	// If so, divide it further into four sectors,
+	// unless it's already one pixel wide and high.
+	//
+	//
+	// idea of how we could implemant the quarants:
+	//
+	// size_t quad1Row= start_y; quad1Row < height/2; quad1Row++
+	// size_t quad1Col= start_x; quad1Col < width/2; quad1Col++
+    //
+	//.......
+	//
+	//if (found_edge) {
+	//	stylize(start_x, start_y, width/2, height/2, out, edges, in);
+	//
+	// size_t quad2Row= start_yHalfway;  quad2Row < height; quad2Row++
+	// size_t quad2Col= start_x; quad2Col < width/2; quad2Col++
+    //
+	//.......
+	//
+	//if (found_edge) {
+	//	stylize(start_x, start_y, width/2, (height - start_yHalfway) , out, edges, in);
+	//
+	// size_t quad3Row= start_yHalfway; quad3Row < height; quad3Row++
+	// size_t quad3Col= start_xHalfway; quad3Col < width; quad3Col++
+    //
+	//.......
+	//
+	//if (found_edge) {
+	//	stylize(start_x, start_y, (width - start_xHalfway) ,(height - start_yHalfway) , out, edges, in);
+	//
+	// size_t quad4Row= start_y;  quad2Row < height; quad2Row++
+	// size_t quad4Col= start_xHalfway; quad2Col < width; quad2Col++
+	//
+	//.......
+	//
+	//if (found_edge) {
+	//	stylize(start_x, start_y, (width - start_xHalfway), height/2, out, edges, in);
+	//
 
 	// Check if there is any edge in this sector of the image.
 	// If so, divide it further into four sectors,
