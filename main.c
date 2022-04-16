@@ -55,7 +55,7 @@ void stylize(
 
 void detect_edges(
 	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
-	unsigned char threshold
+	int threshold
 );
 
 int convolute(Rgb pixels[], int size, int kernel[]);
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
     Rgb (*out)[width] = (Rgb(*)[width]) imgs[1].data;
 	Rgb edges[height][width];
 
-	detect_edges(width, height, in, edges, 255);
+	detect_edges(width, height, in, edges, 800);
 	stylize(0, 0, width, height, out, edges, in);
 
     tex[0] = SOIL_create_OGL_texture((unsigned char*) imgs[0].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
@@ -176,7 +176,7 @@ void stylize(
 
 void detect_edges(
 	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
-	unsigned char threshold
+	int threshold
 ) {
 	for (size_t row = 1; row < height-1; row++) {
 		for (size_t col = 1; col < width-1; col++) {
