@@ -144,12 +144,13 @@ void stylize(
 	//
 	// idea of how we could implemant the quarants:
 	//
+	//if (found_edge) {
+    //
 	// size_t quad1Row= start_y; quad1Row < height/2; quad1Row++
 	// size_t quad1Col= start_x; quad1Col < width/2; quad1Col++
     //
 	//.......
 	//
-	//if (found_edge) {
 	//	stylize(start_x, start_y, width/2, height/2, out, edges, in);
 	//
 	// size_t quad2Row= start_yHalfway;  quad2Row < height; quad2Row++
@@ -157,7 +158,6 @@ void stylize(
     //
 	//.......
 	//
-	//if (found_edge) {
 	//	stylize(start_x, start_y, width/2, (height - start_yHalfway) , out, edges, in);
 	//
 	// size_t quad3Row= start_yHalfway; quad3Row < height; quad3Row++
@@ -165,7 +165,6 @@ void stylize(
     //
 	//.......
 	//
-	//if (found_edge) {
 	//	stylize(start_x, start_y, (width - start_xHalfway) ,(height - start_yHalfway) , out, edges, in);
 	//
 	// size_t quad4Row= start_y;  quad2Row < height; quad2Row++
@@ -173,7 +172,6 @@ void stylize(
 	//
 	//.......
 	//
-	//if (found_edge) {
 	//	stylize(start_x, start_y, (width - start_xHalfway), height/2, out, edges, in);
 	//
 
