@@ -142,7 +142,7 @@ void stylize(
 	// unless it's already one pixel wide and high.
 	//
 	//
-	// idea of how we could implemant the quarants:
+	// Idea of how we could implemant the quarants:
 	//
 	//if (found_edge) {
     //
@@ -173,6 +173,63 @@ void stylize(
 	//.......
 	//
 	//	stylize(start_x, start_y, (width - start_xHalfway), height/2, out, edges, in);
+	//
+	//-------------------------------------------------------------------------------------------------------------
+	//
+	// Idea of how we could implemant the enhanced randomizer:
+	//
+	// Previous Randomizer (would need to be adjusted to fit current code):
+	//
+    //Point* getSeeds(int amount, Pixel* in, int width, int height) {
+    //Point* seeds;
+    //for (int i=0; i<amount; i++) {
+    //int rand_x = rand() % width + 1;
+    //int rand_y = rand() % height + 1;
+	//Point seed = { rand_x, rand_y };
+    //
+	//Rgb seedNeighbors[9] = {
+	//			  in[rand_x-1][rand_y-1],
+	//			  in[rand_x-1][rand_y],
+	//			  in[rand_x-1][rand_y+1],
+	//			  in[rand_x][rand_y-1],
+	//			  in[rand_x][rand_y],
+	//			  in[rand_x][rand_y+1],
+	//			  in[rand_x+1][rand_y-1],
+	//			  in[rand_x+1][rand_y],
+	//			  in[rand_x+1][rand_y+1]
+	//}
+	//
+	// for(int k=0;k<seedNeighbors.lenght;k++){
+    //-TODO: implementar um "seedNeighbors[k]" para detect_edge
+	// if(detect_edge=1){
+	//-TODO: Não retornar seed, e repetir o processo (acho que não precisa de iteração)
+	//} else{
+	//  
+	//Rgb seedCores = new HashMap<Rgb,Rgb>()
+	//			seedCores.put( in[rand_x-1][rand_y-1], out[rand_x-1][rand_y-1]);
+	//			seedCores.put( in[rand_x-1][rand_y], out[rand_x-1][rand_y]);
+	//			seedCores.put( in[rand_x-1][rand_y+1], out[rand_x-1][rand_y+1]);
+	//			seedCores.put( in[rand_x][rand_y-1], out[rand_x][rand_y-1]);
+	//			seedCores.put( in[rand_x][rand_y], out[rand_x][rand_y]);
+	//			seedCores.put( in[rand_x][rand_y+1], out[rand_x][rand_y+1]);
+	//			seedCores.put( in[rand_x-1][rand_y-1], out[rand_x-1][rand_y-1]);
+	//			seedCores.put( in[rand_x+1][rand_y], out[rand_x+1][rand_y]);
+	//			seedCores.put( in[rand_x+1][rand_y+1], out[rand_x+1][rand_y+1]
+	//}	
+	//
+	//================== Com o map, podemos pegar cada cor, de cada pixel, somar todas, dividir por 9 e usar um quicksort para ver qual é a cor mais proxima dentre todas, e fazer desse pixel a seed=========== 
+	//
+	//}
+	//
+	//
+	//
+	//
+	//seeds[i] = seed;
+    //}
+    //
+    //return seeds;
+    //}
+	// 
 	//
 
 	// Check if there is any edge in this sector of the image.
