@@ -49,8 +49,8 @@ void load(char* name, ImageRgb* pic);
 void validate();
 
 void stylize(
-	size_t start_x, size_t start_y, size_t width, size_t height,
-	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
+	size_t start_x, size_t start_y, size_t end_x, size_t end_y,
+	Rgb out[][end_x], Rgb edges[][end_x], Rgb in[][end_x]
 );
 
 void detect_edges(
@@ -130,90 +130,37 @@ int main(int argc, char** argv)
 }
 
 void stylize(
-	size_t start_x, size_t start_y, size_t width, size_t height,
-	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
+	size_t start_x, size_t start_y, size_t end_x, size_t end_y,
+	Rgb out[][end_x], Rgb edges[][end_x], Rgb in[][end_x]
 ) {
-	int found_edge = 0;
-// size_t start_xHalfway = width/2;
-	// size_t start_yHalfway = height/2;
+	unsigned char first_color = edges[start_y][start_x].r;
 
 	// Check if there is any edge in this sector of the image.
 	// If so, divide it further into four sectors,
 	// unless it's already one pixel wide and high.
-	//
-	//
-	// idea of how we could implemant the quarants:
-	//
-	// size_t quad1Row= start_y; quad1Row < height/2; quad1Row++
-	// size_t quad1Col= start_x; quad1Col < width/2; quad1Col++
-    //
-	//.......
-	//
-	//if (found_edge) {
-	//	stylize(start_x, start_y, width/2, height/2, out, edges, in);
-	//
-	// size_t quad2Row= start_yHalfway;  quad2Row < height; quad2Row++
-	// size_t quad2Col= start_x; quad2Col < width/2; quad2Col++
-    //
-	//.......
-	//
-	//if (found_edge) {
-	//	stylize(start_x, start_y, width/2, (height - start_yHalfway) , out, edges, in);
-	//
-	// size_t quad3Row= start_yHalfway; quad3Row < height; quad3Row++
-	// size_t quad3Col= start_xHalfway; quad3Col < width; quad3Col++
-    //
-	//.......
-	//
-	//if (found_edge) {
-	//	stylize(start_x, start_y, (width - start_xHalfway) ,(height - start_yHalfway) , out, edges, in);
-	//
-	// size_t quad4Row= start_y;  quad2Row < height; quad2Row++
-	// size_t quad4Col= start_xHalfway; quad2Col < width; quad2Col++
-	//
-	//.......
-	//
-	//if (found_edge) {
-	//	stylize(start_x, start_y, (width - start_xHalfway), height/2, out, edges, in);
-	//
+	for (size_t row = start_y; row < end_y; row++) {
+		for (size_t col = start_x; col < end_x; col++) {
+			if (edges[row][col].r != first_color) {
+				size_t middle_x = (start_x + end_x) / 2;
+				size_t middle_y = (start_y + end_y) / 2;
 
-	// Check if there is any edge in this sector of the image.
-	// If so, divide it further into four sectors,
-	// unless it's already one pixel wide and high.
-	for (size_t row = start_y; row < height; row++) {
-		for (size_t col = start_x; col < width; col++) {
-			if (edges[row][col].r != 0) {
-				found_edge = 1;
-				break;
+				stylize(start_x, start_y, middle_x, middle_y, out, edges, in);
+				stylize(middle_x + 1, start_y, end_x, middle_y, out, edges, in);
+				stylize(start_x, middle_y + 1, middle_x + 1, end_y, out, edges, in);
+				stylize(middle_x + 1, middle_y + 1, end_x, end_y, out, edges, in);
+
+				return;
 			}
-		}
-
-		if (found_edge) {
-			if (row == height - 1) {
-				found_edge = 0;
-				break;
-			}
-
-			break;
 		}
 	}
 
-	if (found_edge) {
-		stylize(start_x, start_y, width, height >> 1, out, edges, in);
-		stylize(width, height >> 1, width, height, out, edges, in);
-		// return;
+	Rgb color = in[(start_y + end_y) / 2][(start_x + end_x) / 2];
+
+	for (size_t row = start_y; row < end_y; row++) {
+		for (size_t col = start_x; col < end_x; col++) {
+			out[row][col] = color;
+		}
 	}
-
-	// For debugging purposes.
-	out[height-1][width-1] = WHITE;
-
-	// Rgb color = in[height >> 1][width >> 1];
-	//
-	// for (size_t row = start_y; row < height; row++) {
-	// 	for (size_t col = start_x; col < width; col++) {
-	// 		out[row][col] = color;
-	// 	}
-	// }
 }
 
 void detect_edges(
