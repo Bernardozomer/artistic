@@ -135,7 +135,7 @@ void stylize(
 ) {
 	unsigned char first_color = edges[start_y][start_x].r;
 
-	// Check if there is any edge in this sector of the image.
+	// Check if this sector of the image is all edges or all not edges.
 	// If so, divide it further into four sectors,
 	// unless it's already one pixel wide and high.
 	for (size_t row = start_y; row < end_y; row++) {
