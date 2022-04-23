@@ -59,18 +59,19 @@ void stylize(
 );
 
 void find_seeds(
-	Point* seeds, size_t amount,
-	size_t width, size_t height, Rgb edges[][width]
+	Point* seeds, size_t width, size_t height, Rgb edges[][width]
 );
 
-int find_seeds_step(
-	Point* seeds, size_t remaining,
-	size_t start_x, size_t start_y, size_t end_x, size_t end_y,
+void find_seeds_step(
+	Point* seeds,
+	size_t start_x, size_t start_y,
+	size_t end_x, size_t end_y,
 	Rgb edges[][end_x]
 );
 
 void detect_edges(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
+	size_t width, size_t height,
+	Rgb in[][width], Rgb out[][width],
 	int threshold
 );
 
@@ -80,6 +81,7 @@ void draw();
 void keyboard(unsigned char key, int x, int y);
 
 int width, height;
+size_t remaining = 10000;
 
 // Texture identifiers.
 GLuint tex[2];
@@ -137,9 +139,9 @@ int main(int argc, char** argv)
 	Rgb edges[height][width];
 	detect_edges(width, height, in, edges, 800);
 
-	size_t amount = 1000;
-	Point seeds[amount];
-	find_seeds(seeds, amount, width, height, edges);
+	size_t amount = remaining;
+	Point seeds[remaining];
+	find_seeds(seeds, width, height, edges);
 
 	stylize(width, height, in, out, seeds, amount);
 
@@ -175,51 +177,61 @@ void stylize(
 }
 
 void find_seeds(
-	Point* seeds, size_t amount,
+	Point* seeds,
 	size_t width, size_t height, Rgb edges[][width]
 ) {
-	find_seeds_step(seeds, amount, 0, 0, width, height, edges);
+	find_seeds_step(seeds, 0, 0, width, height, edges);
 }
 
-int find_seeds_step(
-	Point* seeds, size_t remaining,
-	size_t start_x, size_t start_y, size_t end_x, size_t end_y,
+void find_seeds_step(
+	Point* seeds,
+	size_t start_x, size_t start_y,
+	size_t end_x, size_t end_y,
 	Rgb edges[][end_x]
 ) {
-	if (remaining <= 0) {
-		return 0;
-	}
-
 	unsigned char first_color = edges[start_y][start_x].r;
 	size_t middle_x = (start_x + end_x) / 2;
 	size_t middle_y = (start_y + end_y) / 2;
 
 	// Check if this sector of the image is all edges or all not edges.
-	// If so, divide it further into four sectors,
-	// unless it's already one pixel wide and high.
+	// If so, divide it further into four sectors.
 	for (size_t row = start_y; row < end_y; row++) {
 		for (size_t col = start_x; col < end_x; col++) {
 			if (edges[row][col].r != first_color) {
-				remaining -= find_seeds_step(seeds, remaining, start_x, start_y, middle_x, middle_y, edges);
-				remaining -= find_seeds_step(seeds, remaining, middle_x + 1, start_y, end_x, middle_y, edges);
-				remaining -= find_seeds_step(seeds, remaining, start_x, middle_y + 1, middle_x + 1, end_y, edges);
-				remaining -= find_seeds_step(seeds, remaining, middle_x + 1, middle_y + 1, end_x, end_y, edges);
+				size_t boundaries[][4] = {
+					{ start_x,      start_y,      middle_x, middle_y },
+					{ middle_x + 1, start_y,      end_x,    middle_y },
+					{ start_x,      middle_y + 1, middle_x, end_y },
+					{ middle_x + 1, middle_y + 1, end_x,    end_y }
+				};
 
-				return 0;
+				for (size_t i = 0; i < 4; i++) {
+					if (remaining <= 0) {
+						break;
+					}
+
+					find_seeds_step(
+						seeds,
+						boundaries[i][0],
+						boundaries[i][1],
+						boundaries[i][2],
+						boundaries[i][3],
+						edges
+					);
+				}
+
+				return;
 			}
 		}
 	}
 
-	Point seed;
-	seed.x = middle_x;
-	seed.y = middle_y;
-	seeds[remaining - 1] = seed;
-
-	return 1;
+	seeds[remaining - 1] = (Point) { middle_x, middle_y };
+	remaining--;
 }
 
 void detect_edges(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
+	size_t width, size_t height,
+	Rgb in[][width], Rgb out[][width],
 	int threshold
 ) {
 	for (size_t row = 1; row < height-1; row++) {
