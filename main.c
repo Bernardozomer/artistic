@@ -197,31 +197,33 @@ void find_seeds_step(
 	// If so, divide it further into four sectors.
 	for (size_t row = start_y; row < end_y; row++) {
 		for (size_t col = start_x; col < end_x; col++) {
-			if (edges[row][col].r != first_color) {
-				size_t boundaries[][4] = {
-					{ start_x,      start_y,      middle_x, middle_y },
-					{ middle_x + 1, start_y,      end_x,    middle_y },
-					{ start_x,      middle_y + 1, middle_x, end_y },
-					{ middle_x + 1, middle_y + 1, end_x,    end_y }
-				};
+			if (edges[row][col].r == first_color) {
+				continue;
+			}
 
-				for (size_t i = 0; i < 4; i++) {
-					if (remaining <= 0) {
-						break;
-					}
+			size_t boundaries[][4] = {
+				{ start_x,      start_y,      middle_x, middle_y },
+				{ middle_x + 1, start_y,      end_x,    middle_y },
+				{ start_x,      middle_y + 1, middle_x, end_y },
+				{ middle_x + 1, middle_y + 1, end_x,    end_y }
+			};
 
-					find_seeds_step(
-						seeds,
-						boundaries[i][0],
-						boundaries[i][1],
-						boundaries[i][2],
-						boundaries[i][3],
-						edges
-					);
+			for (size_t i = 0; i < 4; i++) {
+				if (remaining <= 0) {
+					break;
 				}
 
-				return;
+				find_seeds_step(
+					seeds,
+					boundaries[i][0],
+					boundaries[i][1],
+					boundaries[i][2],
+					boundaries[i][3],
+					edges
+				);
 			}
+
+			return;
 		}
 	}
 
