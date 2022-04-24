@@ -81,7 +81,7 @@ void draw();
 void keyboard(unsigned char key, int x, int y);
 
 int width, height;
-size_t remaining = 10000;
+size_t remaining = 30000;
 
 // Texture identifiers.
 GLuint tex[2];
@@ -161,8 +161,9 @@ void stylize(
 
 			for (size_t i = 0; i < amount; i++) {
 				Point seed = seeds[i];
-				double dx = row - seed.x;
-				double dy = col - seed.y;
+
+				double dx = col - seed.x;
+				double dy = row - seed.y;
 				double dist = dx*dx + dy*dy;
 
 				if (dist < closest_dist) {
