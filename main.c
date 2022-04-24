@@ -1,8 +1,9 @@
 /* main.c */
+#include <float.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <string.h>
 
 #ifdef WIN32
@@ -45,17 +46,33 @@ int kernel_y[] = {
 	-1, -2, -1,
 };
 
+typedef struct point {
+	size_t x;
+	size_t y;
+} Point;
+
 void load(char* name, ImageRgb* pic);
 void validate();
 
 void stylize(
-	size_t start_x, size_t start_y, size_t width, size_t height,
-	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
+	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds, size_t amount
+);
+
+void find_seeds(
+	Point* seeds, size_t width, size_t height, Rgb edges[][width]
+);
+
+void find_seeds_step(
+	Point* seeds,
+	size_t start_x, size_t start_y,
+	size_t end_x, size_t end_y,
+	Rgb edges[][end_x]
 );
 
 void detect_edges(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
-	unsigned char threshold
+	size_t width, size_t height,
+	Rgb in[][width], Rgb out[][width],
+	int threshold
 );
 
 int convolute(Rgb pixels[], int size, int kernel[]);
@@ -64,6 +81,7 @@ void draw();
 void keyboard(unsigned char key, int x, int y);
 
 int width, height;
+size_t remaining = 30000;
 
 // Texture identifiers.
 GLuint tex[2];
@@ -119,9 +137,13 @@ int main(int argc, char** argv)
     Rgb (*in)[width] = (Rgb(*)[width]) imgs[0].data;
     Rgb (*out)[width] = (Rgb(*)[width]) imgs[1].data;
 	Rgb edges[height][width];
+	detect_edges(width, height, in, edges, 800);
 
-	detect_edges(width, height, in, edges, 255);
-	stylize(0, 0, width, height, out, edges, in);
+	size_t amount = remaining;
+	Point seeds[remaining];
+	find_seeds(seeds, width, height, edges);
+
+	stylize(width, height, in, out, seeds, amount);
 
     tex[0] = SOIL_create_OGL_texture((unsigned char*) imgs[0].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
     tex[1] = SOIL_create_OGL_texture((unsigned char*) imgs[1].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
@@ -130,150 +152,90 @@ int main(int argc, char** argv)
 }
 
 void stylize(
-	size_t start_x, size_t start_y, size_t width, size_t height,
-	Rgb out[][width], Rgb edges[][width], Rgb in[][width]
+	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds, size_t amount
 ) {
-	int found_edge = 0;
-// size_t start_xHalfway = width/2;
-	// size_t start_yHalfway = height/2;
+	for (size_t row = 0; row < height; row++) {
+		for (size_t col = 0; col < width; col++) {
+			Point closest_seed;
+			double closest_dist = INFINITY;
 
-	// Check if there is any edge in this sector of the image.
-	// If so, divide it further into four sectors,
-	// unless it's already one pixel wide and high.
-	//
-	//
-	// Idea of how we could implemant the quarants:
-	//
-	//if (found_edge) {
-    //
-	// size_t quad1Row= start_y; quad1Row < height/2; quad1Row++
-	// size_t quad1Col= start_x; quad1Col < width/2; quad1Col++
-    //
-	//.......
-	//
-	//	stylize(start_x, start_y, width/2, height/2, out, edges, in);
-	//
-	// size_t quad2Row= start_yHalfway;  quad2Row < height; quad2Row++
-	// size_t quad2Col= start_x; quad2Col < width/2; quad2Col++
-    //
-	//.......
-	//
-	//	stylize(start_x, start_y, width/2, (height - start_yHalfway) , out, edges, in);
-	//
-	// size_t quad3Row= start_yHalfway; quad3Row < height; quad3Row++
-	// size_t quad3Col= start_xHalfway; quad3Col < width; quad3Col++
-    //
-	//.......
-	//
-	//	stylize(start_x, start_y, (width - start_xHalfway) ,(height - start_yHalfway) , out, edges, in);
-	//
-	// size_t quad4Row= start_y;  quad2Row < height; quad2Row++
-	// size_t quad4Col= start_xHalfway; quad2Col < width; quad2Col++
-	//
-	//.......
-	//
-	//	stylize(start_x, start_y, (width - start_xHalfway), height/2, out, edges, in);
-	//
-	//-------------------------------------------------------------------------------------------------------------
-	//
-	// Idea of how we could implemant the enhanced randomizer:
-	//
-	// Previous Randomizer (would need to be adjusted to fit current code):
-	//
-    //Point* getSeeds(int amount, Pixel* in, int width, int height) {
-    //Point* seeds;
-    //for (int i=0; i<amount; i++) {
-    //int rand_x = rand() % width + 1;
-    //int rand_y = rand() % height + 1;
-	//Point seed = { rand_x, rand_y };
-    //
-	//Rgb seedNeighbors[9] = {
-	//			  in[rand_x-1][rand_y-1],
-	//			  in[rand_x-1][rand_y],
-	//			  in[rand_x-1][rand_y+1],
-	//			  in[rand_x][rand_y-1],
-	//			  in[rand_x][rand_y],
-	//			  in[rand_x][rand_y+1],
-	//			  in[rand_x+1][rand_y-1],
-	//			  in[rand_x+1][rand_y],
-	//			  in[rand_x+1][rand_y+1]
-	//}
-	//
-	// for(int k=0;k<seedNeighbors.lenght;k++){
-    //-TODO: implementar um "seedNeighbors[k]" para detect_edge
-	// if(detect_edge=1){
-	//-TODO: Não retornar seed, e repetir o processo (acho que não precisa de iteração)
-	//} else{
-	//  
-	//Rgb seedCores = new HashMap<Rgb,Rgb>()
-	//			seedCores.put( in[rand_x-1][rand_y-1], out[rand_x-1][rand_y-1]);
-	//			seedCores.put( in[rand_x-1][rand_y], out[rand_x-1][rand_y]);
-	//			seedCores.put( in[rand_x-1][rand_y+1], out[rand_x-1][rand_y+1]);
-	//			seedCores.put( in[rand_x][rand_y-1], out[rand_x][rand_y-1]);
-	//			seedCores.put( in[rand_x][rand_y], out[rand_x][rand_y]);
-	//			seedCores.put( in[rand_x][rand_y+1], out[rand_x][rand_y+1]);
-	//			seedCores.put( in[rand_x-1][rand_y-1], out[rand_x-1][rand_y-1]);
-	//			seedCores.put( in[rand_x+1][rand_y], out[rand_x+1][rand_y]);
-	//			seedCores.put( in[rand_x+1][rand_y+1], out[rand_x+1][rand_y+1]
-	//}	
-	//
-	//================== Com o map, podemos pegar cada cor, de cada pixel, somar todas, dividir por 9 e usar um quicksort para ver qual é a cor mais proxima dentre todas, e fazer desse pixel a seed=========== 
-	//
-	//}
-	//
-	//
-	//
-	//
-	//seeds[i] = seed;
-    //}
-    //
-    //return seeds;
-    //}
-	// 
-	//
+			for (size_t i = 0; i < amount; i++) {
+				Point seed = seeds[i];
 
-	// Check if there is any edge in this sector of the image.
-	// If so, divide it further into four sectors,
-	// unless it's already one pixel wide and high.
-	for (size_t row = start_y; row < height; row++) {
-		for (size_t col = start_x; col < width; col++) {
-			if (edges[row][col].r != 0) {
-				found_edge = 1;
-				break;
+				double dx = col - seed.x;
+				double dy = row - seed.y;
+				double dist = dx*dx + dy*dy;
+
+				if (dist < closest_dist) {
+					closest_seed = seed;
+					closest_dist = dist;
+				}
 			}
+
+			out[row][col] = in[closest_seed.y][closest_seed.x];
 		}
+	}
+}
 
-		if (found_edge) {
-			if (row == height - 1) {
-				found_edge = 0;
-				break;
+void find_seeds(
+	Point* seeds,
+	size_t width, size_t height, Rgb edges[][width]
+) {
+	find_seeds_step(seeds, 0, 0, width, height, edges);
+}
+
+void find_seeds_step(
+	Point* seeds,
+	size_t start_x, size_t start_y,
+	size_t end_x, size_t end_y,
+	Rgb edges[][end_x]
+) {
+	unsigned char first_color = edges[start_y][start_x].r;
+	size_t middle_x = (start_x + end_x) / 2;
+	size_t middle_y = (start_y + end_y) / 2;
+
+	// Check if this sector of the image is all edges or all not edges.
+	// If so, divide it further into four sectors.
+	for (size_t row = start_y; row < end_y; row++) {
+		for (size_t col = start_x; col < end_x; col++) {
+			if (edges[row][col].r == first_color) {
+				continue;
 			}
 
-			break;
+			size_t boundaries[][4] = {
+				{ start_x,      start_y,      middle_x, middle_y },
+				{ middle_x + 1, start_y,      end_x,    middle_y },
+				{ start_x,      middle_y + 1, middle_x, end_y },
+				{ middle_x + 1, middle_y + 1, end_x,    end_y }
+			};
+
+			for (size_t i = 0; i < 4; i++) {
+				if (remaining <= 0) {
+					break;
+				}
+
+				find_seeds_step(
+					seeds,
+					boundaries[i][0],
+					boundaries[i][1],
+					boundaries[i][2],
+					boundaries[i][3],
+					edges
+				);
+			}
+
+			return;
 		}
 	}
 
-	if (found_edge) {
-		stylize(start_x, start_y, width, height >> 1, out, edges, in);
-		stylize(width, height >> 1, width, height, out, edges, in);
-		// return;
-	}
-
-	// For debugging purposes.
-	out[height-1][width-1] = WHITE;
-
-	// Rgb color = in[height >> 1][width >> 1];
-	//
-	// for (size_t row = start_y; row < height; row++) {
-	// 	for (size_t col = start_x; col < width; col++) {
-	// 		out[row][col] = color;
-	// 	}
-	// }
+	seeds[remaining - 1] = (Point) { middle_x, middle_y };
+	remaining--;
 }
 
 void detect_edges(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width],
-	unsigned char threshold
+	size_t width, size_t height,
+	Rgb in[][width], Rgb out[][width],
+	int threshold
 ) {
 	for (size_t row = 1; row < height-1; row++) {
 		for (size_t col = 1; col < width-1; col++) {
