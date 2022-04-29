@@ -2,6 +2,7 @@
 #include <float.h>
 #include <math.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +56,7 @@ void load(char* name, ImageRgb* pic);
 void validate();
 
 void stylize(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds, size_t amount
+	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds
 );
 
 void find_seeds(
@@ -81,7 +82,8 @@ void draw();
 void keyboard(unsigned char key, int x, int y);
 
 int width, height;
-size_t remaining = 30000;
+size_t max_seeds = 80000;
+size_t seeds_found = 0;
 
 // Texture identifiers.
 GLuint tex[2];
@@ -90,7 +92,6 @@ ImageRgb imgs[2];
 // imgs[0] is the input image, while imgs[1] is the output image.
 int sel;
 
-// Carrega uma imagem para a struct Img
 void load(char* name, ImageRgb* pic)
 {
     int chan;
@@ -101,7 +102,7 @@ void load(char* name, ImageRgb* pic)
         exit(1);
     }
 
-    printf("Load   : %d x %d x %d\n", pic->width, pic->height, chan);
+    printf("Load        : %d x %d x %d\n", pic->width, pic->height, chan);
 }
 
 int main(int argc, char** argv)
@@ -130,20 +131,21 @@ int main(int argc, char** argv)
 	gluOrtho2D(0.0, width, height, 0.0);
 	glMatrixMode(GL_MODELVIEW);
 
-    printf("Source  : %s %d x %d\n", argv[1], imgs[0].width, imgs[0].height);
+    printf("Source      : %s %d x %d\n", argv[1], imgs[0].width, imgs[0].height);
     sel = 0;
 
     // Interpret the images as rgb matrixes.
     Rgb (*in)[width] = (Rgb(*)[width]) imgs[0].data;
     Rgb (*out)[width] = (Rgb(*)[width]) imgs[1].data;
 	Rgb edges[height][width];
-	detect_edges(width, height, in, edges, 800);
+	detect_edges(width, height, in, edges, 600);
 
-	size_t amount = remaining;
-	Point seeds[remaining];
+	size_t amount = max_seeds;
+	Point seeds[max_seeds];
 	find_seeds(seeds, width, height, edges);
+	printf("Seeds found : %zu\n", seeds_found);
 
-	stylize(width, height, in, out, seeds, amount);
+	stylize(width, height, in, out, seeds);
 
     tex[0] = SOIL_create_OGL_texture((unsigned char*) imgs[0].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
     tex[1] = SOIL_create_OGL_texture((unsigned char*) imgs[1].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
@@ -152,19 +154,19 @@ int main(int argc, char** argv)
 }
 
 void stylize(
-	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds, size_t amount
+	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds
 ) {
 	for (size_t row = 0; row < height; row++) {
 		for (size_t col = 0; col < width; col++) {
-			Point closest_seed;
-			double closest_dist = INFINITY;
+			Point closest_seed = seeds[0];
+			int closest_dist = INT32_MAX;
 
-			for (size_t i = 0; i < amount; i++) {
+			for (size_t i = 0; i < seeds_found; i++) {
 				Point seed = seeds[i];
 
-				double dx = col - seed.x;
-				double dy = row - seed.y;
-				double dist = dx*dx + dy*dy;
+				int dx = (int) col - (int) seed.x;
+				int dy = (int) row - (int) seed.y;
+				int dist = dx*dx + dy*dy;
 
 				if (dist < closest_dist) {
 					closest_seed = seed;
@@ -210,7 +212,7 @@ void find_seeds_step(
 			};
 
 			for (size_t i = 0; i < 4; i++) {
-				if (remaining <= 0) {
+				if (seeds_found == max_seeds) {
 					break;
 				}
 
@@ -228,8 +230,8 @@ void find_seeds_step(
 		}
 	}
 
-	seeds[remaining - 1] = (Point) { middle_x, middle_y };
-	remaining--;
+	seeds[seeds_found] = (Point) { middle_x, middle_y };
+	seeds_found++;
 }
 
 void detect_edges(
