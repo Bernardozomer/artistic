@@ -27,30 +27,18 @@ typedef struct {
     unsigned char r, g, b;
 } Rgb;
 
-const Rgb BLACK = (Rgb) {0, 0, 0};
-const Rgb WHITE = (Rgb) {255, 255, 255};
-
 typedef struct {
     int width, height;
     Rgb* data;
 } ImageRgb;
 
-int kernel_x[] = {
-	-1,  0, +1,
-	-2,  0, +2,
-	-1,  0, +1,
-};
-
-int kernel_y[] = {
-	+1, +2, +1,
-	 0,  0, 0,
-	-1, -2, -1,
-};
-
 typedef struct point {
 	size_t x;
 	size_t y;
 } Point;
+
+static const Rgb BLACK = (Rgb) {0, 0, 0};
+static const Rgb WHITE = (Rgb) {255, 255, 255};
 
 void load(char* name, ImageRgb* pic);
 void validate();
@@ -63,7 +51,7 @@ void find_seeds(
 	Point* seeds, size_t width, size_t height, Rgb edges[][width]
 );
 
-void find_seeds_step(
+static void find_seeds_step(
 	Point* seeds,
 	size_t start_x, size_t start_y,
 	size_t end_x, size_t end_y,
@@ -76,7 +64,7 @@ void detect_edges(
 	int threshold
 );
 
-int convolute(Rgb pixels[], int size, int kernel[]);
+static int convolute(Rgb pixels[], int size, const int kernel[]);
 void init();
 void draw();
 void keyboard(unsigned char key, int x, int y);
@@ -91,19 +79,6 @@ ImageRgb imgs[2];
 // Holds the index of the selected image (0 or 1).
 // imgs[0] is the input image, while imgs[1] is the output image.
 int sel;
-
-void load(char* name, ImageRgb* pic)
-{
-    int chan;
-    pic->data = (Rgb*) SOIL_load_image(name, &pic->width, &pic->height, &chan, SOIL_LOAD_RGB);
-
-    if(!pic->data) {
-        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
-        exit(1);
-    }
-
-    printf("Load        : %d x %d x %d\n", pic->width, pic->height, chan);
-}
 
 int main(int argc, char** argv)
 {
@@ -137,22 +112,35 @@ int main(int argc, char** argv)
     // Interpret the images as rgb matrixes.
     Rgb (*in)[width] = (Rgb(*)[width]) imgs[0].data;
     Rgb (*out)[width] = (Rgb(*)[width]) imgs[1].data;
-	Rgb edges[height][width];
-	detect_edges(width, height, in, edges, 600);
 
-	size_t amount = max_seeds;
+	Rgb edges[height][width];
+	detect_edges(width, height, in, edges, 800);
+
 	Point seeds[max_seeds];
 	find_seeds(seeds, width, height, edges);
 	printf("Seeds found : %zu\n", seeds_found);
 
 	stylize(width, height, in, out, seeds);
 
-    tex[0] = SOIL_create_OGL_texture((unsigned char*) imgs[0].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
-    tex[1] = SOIL_create_OGL_texture((unsigned char*) imgs[1].data, width, height, SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
+    tex[0] = SOIL_create_OGL_texture(
+		(unsigned char*) imgs[0].data, width, height,
+		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0
+	);
+
+    tex[1] = SOIL_create_OGL_texture(
+		(unsigned char*) imgs[1].data, width, height,
+		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0
+	);
 
     glutMainLoop();
 }
 
+/**
+ * Stylize the given image based on its seeds into a voronoi diagram
+ * using the euclidean distance as a metric.
+ *
+ * Performs badly because every pixel calculates its distance to every seed.
+ */
 void stylize(
 	size_t width, size_t height, Rgb in[][width], Rgb out[][width], Point* seeds
 ) {
@@ -179,14 +167,27 @@ void stylize(
 	}
 }
 
+/**
+ * Start the process of finding seeds on a given image based on its edges.
+ *
+ * This function exists to provide a simpler interface for the user.
+ */
 void find_seeds(
-	Point* seeds,
-	size_t width, size_t height, Rgb edges[][width]
+	Point* seeds, size_t width, size_t height, Rgb edges[][width]
 ) {
 	find_seeds_step(seeds, 0, 0, width, height, edges);
 }
 
-void find_seeds_step(
+/**
+ * Find spots appropriate for seeds that will be later used
+ * to stylize an image.
+ *
+ * This function behaves like a quadtree, subdividing the space into
+ * four quadrants each time it doesn't satisfy a condition.
+ * In this case, that means being an area of pixels that are
+ * all edges or all not edges.
+ */
+static void find_seeds_step(
 	Point* seeds,
 	size_t start_x, size_t start_y,
 	size_t end_x, size_t end_y,
@@ -196,14 +197,15 @@ void find_seeds_step(
 	size_t middle_x = (start_x + end_x) / 2;
 	size_t middle_y = (start_y + end_y) / 2;
 
-	// Check if this sector of the image is all edges or all not edges.
-	// If so, divide it further into four sectors.
 	for (size_t row = start_y; row < end_y; row++) {
 		for (size_t col = start_x; col < end_x; col++) {
+			// Check if this sector of the image is
+			// all edges or all not edges.
 			if (edges[row][col].r == first_color) {
 				continue;
 			}
 
+			// If not, divide it further into four sectors.
 			size_t boundaries[][4] = {
 				{ start_x,      start_y,      middle_x, middle_y },
 				{ middle_x + 1, start_y,      end_x,    middle_y },
@@ -230,15 +232,43 @@ void find_seeds_step(
 		}
 	}
 
+	// If so, place a seed in this spot.
 	seeds[seeds_found] = (Point) { middle_x, middle_y };
 	seeds_found++;
 }
 
+/**
+ * Perform sobel edge detection on the given image.
+ *
+ * Unlike a standard implementation, this function transforms
+ * gradient edge values into binary ones.
+ *
+ * This is done to simplify further processing and is based
+ * on the given threshold.
+ *
+ * See also: https://en.wikipedia.org/wiki/Sobel_operator
+ *
+ * args:
+ * threshold: the higher it is, the less edges will be found.
+ *			  should be a number between 0 and 4327.
+ */
 void detect_edges(
 	size_t width, size_t height,
 	Rgb in[][width], Rgb out[][width],
 	int threshold
 ) {
+	static const int kernel_x[] = {
+		-1,  0, +1,
+		-2,  0, +2,
+		-1,  0, +1,
+	};
+
+	static const int kernel_y[] = {
+		+1, +2, +1,
+		 0,  0, 0,
+		-1, -2, -1,
+	};
+
 	for (size_t row = 1; row < height-1; row++) {
 		for (size_t col = 1; col < width-1; col++) {
 			Rgb neighbors[] = {
@@ -261,7 +291,13 @@ void detect_edges(
 	}
 }
 
-int convolute(Rgb pixels[], int size, int kernel[]) {
+/**
+ * Compute the result of the sobel operator
+ * for a given point of the given image.
+ *
+ * See also: https://en.wikipedia.org/wiki/Sobel_operator
+ */
+static int convolute(Rgb pixels[], int size, const int kernel[]) {
 	int result = 0;
 
 	for (size_t i = 0; i < size; i++) {
@@ -319,5 +355,20 @@ void draw()
 
 	// Display the image.
     glutSwapBuffers();
+}
+
+void load(char* name, ImageRgb* pic)
+{
+    int chan;
+    pic->data = (Rgb*) SOIL_load_image(
+		name, &pic->width, &pic->height, &chan, SOIL_LOAD_RGB
+	);
+
+    if(!pic->data) {
+        printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
+        exit(1);
+    }
+
+    printf("Load        : %d x %d x %d\n", pic->width, pic->height, chan);
 }
 
