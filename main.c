@@ -82,8 +82,8 @@ int sel;
 
 int main(int argc, char** argv)
 {
-    if(argc < 1) {
-        printf("artistic [source image]\n");
+    if(argc < 3) {
+        printf("artistic [source image] [edge detection threshold]\n");
         exit(1);
     }
 
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     Rgb (*out)[width] = (Rgb(*)[width]) imgs[1].data;
 
 	Rgb edges[height][width];
-	detect_edges(width, height, in, edges, 800);
+	detect_edges(width, height, in, edges, atol(argv[2]));
 
 	Point seeds[max_seeds];
 	find_seeds(seeds, width, height, edges);
